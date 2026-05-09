@@ -24,6 +24,33 @@ export const MOCK_PLANTS: Plant[] = [
       "Ask how the interview loop went",
       "Mention you saw it — don't make her bring it up first",
     ],
+    surface: {
+      type: "stack",
+      spacing: "normal",
+      children: [
+        {
+          type: "callout",
+          tone: "warm",
+          label: "3 days unanswered",
+          body: "She landed a PM role and shared it with you. Don't make her bring it up first.",
+        },
+        {
+          type: "quote",
+          from: "Anjali",
+          at: "2026-05-06T11:20:00Z",
+          body: "are u alive? it's been 2 weeks i'm getting worried",
+        },
+        { type: "heading", body: "Things to react to", level: 3 },
+        {
+          type: "bullet_list",
+          items: [
+            "Ask which company / which team it is",
+            "Ask how the interview loop went",
+            "Mention you saw it — don't make her bring it up first",
+          ],
+        },
+      ],
+    },
     channel: "whatsapp",
     warmth: 78,
   },
@@ -39,6 +66,26 @@ export const MOCK_PLANTS: Plant[] = [
       "Try a call instead of a text — he prefers voice",
       "Ask about his back / how he's been feeling",
     ],
+    surface: {
+      type: "stack",
+      spacing: "normal",
+      children: [
+        {
+          type: "callout",
+          tone: "info",
+          label: "channel hint",
+          body: "Dad responds 4× faster to calls than texts. The text thread has gone cold.",
+        },
+        { type: "heading", body: "Things to react to", level: 3 },
+        {
+          type: "bullet_list",
+          items: [
+            "Try a call instead of a text — he prefers voice",
+            "Ask about his back / how he's been feeling",
+          ],
+        },
+      ],
+    },
     channel: "call",
     warmth: 42,
   },
@@ -55,6 +102,26 @@ export const MOCK_PLANTS: Plant[] = [
       "Answer his question — agent loop is in lib/agent.ts",
       "Offer a 10-min call if he wants a walkthrough",
     ],
+    surface: {
+      type: "stack",
+      spacing: "normal",
+      children: [
+        {
+          type: "quote",
+          from: "Karan",
+          at: new Date(Date.now() - 18 * 3_600_000).toISOString(),
+          body: "yo where does the agent loop actually live? trying to wire something similar",
+        },
+        { type: "heading", body: "Things to react to", level: 3 },
+        {
+          type: "bullet_list",
+          items: [
+            "It's in lib/agent.ts — point him there",
+            "Offer a 10-min call if he wants a walkthrough",
+          ],
+        },
+      ],
+    },
     channel: "whatsapp",
     warmth: 64,
   },
@@ -108,6 +175,21 @@ export const MOCK_PLANTS: Plant[] = [
     daysSinceLastMessage: 2,
     lastMessageWasFromThem: true,
     context: "Daily check-ins. Sent you a recipe yesterday.",
+    surface: {
+      type: "stack",
+      spacing: "normal",
+      children: [
+        {
+          type: "countdown",
+          targetAt: new Date(Date.now() + 9 * 86_400_000).toISOString(),
+          label: "Mom's birthday",
+        },
+        {
+          type: "text",
+          body: "Daily check-ins are alive. The thread is healthy. Just don't forget the date in 9 days.",
+        },
+      ],
+    },
     channel: "whatsapp",
     warmth: 92,
   },
@@ -164,6 +246,33 @@ export const MOCK_PLANTS: Plant[] = [
       "Lead with the apology, not an explanation",
       "Specific over kind — what'd you actually change?",
     ],
+    surface: {
+      type: "stack",
+      spacing: "normal",
+      children: [
+        {
+          type: "callout",
+          tone: "warning",
+          label: "you said 'tomorrow'",
+          body: "She asked for feedback 6 days ago. Don't reply without opening her page first.",
+        },
+        {
+          type: "link_card",
+          title: "riyabuilds.com — landing page v2",
+          url: "https://riyabuilds.com",
+          source: "riyabuilds.com",
+          description: "Opens her actual page — review before you reply.",
+        },
+        { type: "heading", body: "Things to react to", level: 3 },
+        {
+          type: "bullet_list",
+          items: [
+            "Lead with the apology, not an explanation",
+            "Specific over kind — what'd you actually change?",
+          ],
+        },
+      ],
+    },
     channel: "whatsapp",
     warmth: 68,
   },

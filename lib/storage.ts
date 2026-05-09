@@ -111,6 +111,26 @@ export async function getChatForPlant(
   return store.chats[plantId];
 }
 
+/** Remove a single plant + its cached chat. */
+export async function removePlant(plantId: string): Promise<boolean> {
+  const store = await readStore();
+  const before = store.plants.length;
+  store.plants = store.plants.filter((p) => p.id !== plantId);
+  delete store.chats[plantId];
+  await writeStore(store);
+  return store.plants.length < before;
+}
+
+/** Wipe all plants (and their cached chats). Player state stays intact. */
+export async function clearAllPlants(): Promise<number> {
+  const store = await readStore();
+  const removed = store.plants.length;
+  store.plants = [];
+  store.chats = {};
+  await writeStore(store);
+  return removed;
+}
+
 /** Resets cache — useful for tests or after a migration. */
 export function clearCache(): void {
   cache = null;

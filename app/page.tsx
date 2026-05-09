@@ -2,6 +2,7 @@
 
 import AddPlantSheet from "@/components/AddPlantSheet";
 import Garden from "@/components/Garden";
+import LinkWhatsAppSheet from "@/components/LinkWhatsAppSheet";
 import PlantModal from "@/components/PlantModal";
 import QuestCard from "@/components/QuestCard";
 import StatusBar from "@/components/StatusBar";
@@ -28,7 +29,9 @@ export default function Home() {
   const [openPlant, setOpenPlant] = useState<Plant | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showLink, setShowLink] = useState(false);
   const [usingMocks, setUsingMocks] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
 
   const questPlant = useMemo(
     () =>
@@ -40,21 +43,55 @@ export default function Home() {
     [plants],
   );
 
-  // Initial load — fetch real garden state, fall back to mocks on failure
+  // Initial load + 6s polling so live WhatsApp messages flow into the UI.
+  // Polling continues while the plant modal is open — we propagate the
+  // freshest data into openPlant so its Recent messages list updates live.
+  // Skipped only while the Add/Link sheets are open (they own session state).
   useEffect(() => {
-    fetch("/api/garden", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => {
+    let mounted = true;
+
+    const fetchOnce = async () => {
+      try {
+        const r = await fetch("/api/garden", { cache: "no-store" });
+        const data = await r.json();
+        if (!mounted) return;
         if (Array.isArray(data.plants) && data.plants.length > 0) {
           setPlants(data.plants);
           setPlayer(data.player);
           setUsingMocks(Boolean(data.usingMocks));
+          setLastSyncedAt(Date.now());
+          // If a plant modal is open, refresh its data in place — otherwise
+          // new live messages would never appear in an already-open modal.
+          setOpenPlant((prev) => {
+            if (!prev) return prev;
+            const fresh = (data.plants as Plant[]).find(
+              (p) => p.id === prev.id,
+            );
+            // Always return a NEW object reference to force re-render even if
+            // shallow content matches (lets a "live" pulse animate)
+            return fresh ? { ...fresh } : prev;
+          });
+        } else {
+          setLastSyncedAt(Date.now());
         }
-      })
-      .catch(() => {
-        // Stay with mocks
-      });
-  }, []);
+      } catch {
+        /* ignore network blips */
+      }
+    };
+
+    fetchOnce();
+    const interval = setInterval(() => {
+      // Pause only for Add/Link sheets — those own their own state
+      if (showAdd || showLink) return;
+      fetchOnce();
+    }, 6000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAdd, showLink]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -152,6 +189,38 @@ export default function Home() {
     setToast(`Planted ${plant.name}`);
   }, []);
 
+  const handleBatchAdded = useCallback((newPlants: Plant[]) => {
+    if (newPlants.length === 0) return;
+    setPlants((all) => [...all, ...newPlants]);
+    setUsingMocks(false);
+    setToast(`Planted ${newPlants.length} relationship${newPlants.length === 1 ? "" : "s"}`);
+  }, []);
+
+  const handlePlantRemoved = useCallback((plantId: string) => {
+    setPlants((all) => all.filter((p) => p.id !== plantId));
+    setToast("Removed from garden");
+  }, []);
+
+  const handleClearGarden = useCallback(async () => {
+    if (
+      !window.confirm(
+        "Remove ALL plants and their cached chats? Player level/XP/streak stays intact. WhatsApp link stays connected.",
+      )
+    )
+      return;
+    try {
+      const r = await fetch("/api/plants/clear", { method: "POST" });
+      if (r.ok) {
+        const data = await r.json();
+        setPlants([]);
+        setUsingMocks(true);
+        setToast(`Cleared ${data.removed} plant${data.removed === 1 ? "" : "s"} — start fresh`);
+      }
+    } catch {
+      /* swallow */
+    }
+  }, []);
+
   return (
     <div className="min-h-screen relative">
       <AmbientOrbs />
@@ -171,6 +240,8 @@ export default function Home() {
           plants={plants}
           onPlantClick={(p) => setOpenPlant(p)}
           onAddPlant={() => setShowAdd(true)}
+          onLinkWhatsApp={() => setShowLink(true)}
+          onClearGarden={!usingMocks ? handleClearGarden : undefined}
         />
       </main>
 
@@ -178,14 +249,28 @@ export default function Home() {
 
       <PlantModal
         plant={openPlant}
+        lastSyncedAt={lastSyncedAt}
         onClose={() => setOpenPlant(null)}
         onAction={handleAction}
+        onPlantUpdated={(updated) => {
+          setPlants((all) =>
+            all.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
+          );
+          setOpenPlant(updated);
+        }}
+        onPlantRemoved={handlePlantRemoved}
       />
 
       <AddPlantSheet
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onAdded={handlePlantAdded}
+      />
+
+      <LinkWhatsAppSheet
+        open={showLink}
+        onClose={() => setShowLink(false)}
+        onPlantsImported={handleBatchAdded}
       />
 
       {toast && (

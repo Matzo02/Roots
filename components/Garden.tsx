@@ -1,17 +1,21 @@
 "use client";
 
 import type { Plant } from "@/lib/types";
-import { Plus } from "lucide-react";
+import { Link2, Plus, Trash2 } from "lucide-react";
 import PlantTile from "./Plant";
 
 export default function Garden({
   plants,
   onPlantClick,
   onAddPlant,
+  onLinkWhatsApp,
+  onClearGarden,
 }: {
   plants: Plant[];
   onPlantClick: (plant: Plant) => void;
   onAddPlant?: () => void;
+  onLinkWhatsApp?: () => void;
+  onClearGarden?: () => void;
 }) {
   const counts = plants.reduce(
     (acc, p) => {
@@ -26,8 +30,7 @@ export default function Garden({
 
   return (
     <section>
-      {/* Header row */}
-      <div className="flex items-end justify-between mb-4 px-1">
+      <div className="flex items-end justify-between mb-4 px-1 gap-3 flex-wrap">
         <div>
           <h2 className="font-display text-xl font-semibold text-[var(--color-ink)] mb-0.5">
             your garden
@@ -53,16 +56,33 @@ export default function Garden({
           </p>
         </div>
 
-        <button
-          onClick={onAddPlant}
-          className="btn btn-secondary text-sm px-3 py-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add plant</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onLinkWhatsApp}
+            className="btn btn-primary text-sm px-3 py-2"
+          >
+            <Link2 className="w-4 h-4" />
+            <span>Link WhatsApp</span>
+          </button>
+          <button
+            onClick={onAddPlant}
+            className="btn btn-secondary text-sm px-3 py-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add manually</span>
+          </button>
+          {onClearGarden && plants.length > 0 && (
+            <button
+              onClick={onClearGarden}
+              title="Remove all plants — start fresh"
+              className="btn btn-ghost text-sm px-2.5 py-2 text-[var(--color-ink-muted)] hover:text-rose-600"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Plant grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
         {plants.map((plant) => (
           <PlantTile

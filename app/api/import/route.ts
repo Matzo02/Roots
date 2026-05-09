@@ -18,7 +18,7 @@
  *   6. Return the new plant
  */
 
-import { observePlant } from "@/lib/agent";
+import { fallbackObservation, observePlant } from "@/lib/agent";
 import { derivePlantState } from "@/lib/plant-state";
 import { setChatForPlant, updatePlants } from "@/lib/storage";
 import type { Channel, Plant } from "@/lib/types";
@@ -98,9 +98,10 @@ export async function POST(req: Request) {
   const signals = computeSignals(chat);
   const derived = derivePlantState(signals);
 
-  // Agent call — surface context + talking points
+  // Agent call — surface context, talking points + A2UI surface
   let context: string;
   let talkingPoints: string[] = [];
+  let surface;
   try {
     const obs = await observePlant({
       contactName: parsed.name,
@@ -110,14 +111,14 @@ export async function POST(req: Request) {
     });
     context = obs.context;
     talkingPoints = obs.talkingPoints;
+    surface = obs.surface;
   } catch (err) {
-    // Don't fail the whole import if the agent call fails — fall back to a
-    // deterministic context line so the plant still gets added.
     console.error("[import] agent failed:", err);
     context =
       derived.lastMessageWasFromThem && derived.daysSinceLastMessage >= 1
         ? `${parsed.name} sent you a message ${derived.daysSinceLastMessage} day(s) ago — unanswered.`
         : `${parsed.name} — last message ${derived.daysSinceLastMessage} day(s) ago.`;
+    surface = fallbackObservation(context, []).surface;
   }
 
   const plant: Plant = {
@@ -132,6 +133,7 @@ export async function POST(req: Request) {
     lastMessageWasFromThem: derived.lastMessageWasFromThem,
     context,
     talkingPoints,
+    surface,
   };
 
   await setChatForPlant(plant.id, chat);

@@ -2,8 +2,10 @@
 
 import type { Plant } from "@/lib/types";
 import clsx from "clsx";
-import { Loader2, Sparkles, Upload, X } from "lucide-react";
+import { Loader2, MessageCircle, Smartphone, Sparkles, Upload, X } from "lucide-react";
 import { useState } from "react";
+
+type Source = "whatsapp" | "imessage";
 
 export default function AddPlantSheet({
   open,
@@ -14,8 +16,10 @@ export default function AddPlantSheet({
   onClose: () => void;
   onAdded: (plant: Plant) => void;
 }) {
+  const [source, setSource] = useState<Source>("whatsapp");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [imessageHandle, setImessageHandle] = useState("");
   const [handle, setHandle] = useState("");
   const [channel, setChannel] = useState<"whatsapp" | "imessage" | "call">(
     "whatsapp",
@@ -28,31 +32,47 @@ export default function AddPlantSheet({
   if (!open) return null;
 
   const cleanPhone = phone.replace(/\D/g, "");
-  const valid = name.trim().length > 0 && /^\d{8,15}$/.test(cleanPhone) && file;
+  const valid =
+    source === "whatsapp"
+      ? name.trim().length > 0 && /^\d{8,15}$/.test(cleanPhone) && file
+      : name.trim().length > 0 && imessageHandle.trim().length >= 3;
 
   const submit = async () => {
-    if (!valid || !file) return;
+    if (!valid) return;
     setSubmitting(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("name", name.trim());
-      fd.append("phone", cleanPhone);
-      if (handle.trim()) fd.append("handle", handle.trim());
-      fd.append("channel", channel);
-      if (publicContext.trim()) fd.append("publicContext", publicContext.trim());
-
-      const res = await fetch("/api/import", { method: "POST", body: fd });
+      let res: Response;
+      if (source === "whatsapp") {
+        const fd = new FormData();
+        fd.append("file", file!);
+        fd.append("name", name.trim());
+        fd.append("phone", cleanPhone);
+        if (handle.trim()) fd.append("handle", handle.trim());
+        fd.append("channel", channel);
+        if (publicContext.trim())
+          fd.append("publicContext", publicContext.trim());
+        res = await fetch("/api/import", { method: "POST", body: fd });
+      } else {
+        res = await fetch("/api/import-imessage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            handle: imessageHandle.trim(),
+            publicContext: publicContext.trim() || undefined,
+          }),
+        });
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? `HTTP ${res.status}`);
       }
       onAdded(data.plant);
-      // Reset
       setName("");
       setPhone("");
       setHandle("");
+      setImessageHandle("");
       setPublicContext("");
       setFile(null);
       onClose();
@@ -101,6 +121,35 @@ export default function AddPlantSheet({
             </p>
 
             <div className="space-y-4">
+              {/* Source toggle */}
+              <div>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-muted)] mb-1.5">
+                  Source
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <SourceButton
+                    active={source === "whatsapp"}
+                    onClick={() => {
+                      setSource("whatsapp");
+                      setChannel("whatsapp");
+                    }}
+                    icon={<MessageCircle className="w-4 h-4" />}
+                    label="WhatsApp export"
+                    hint=".txt file"
+                  />
+                  <SourceButton
+                    active={source === "imessage"}
+                    onClick={() => {
+                      setSource("imessage");
+                      setChannel("imessage");
+                    }}
+                    icon={<Smartphone className="w-4 h-4" />}
+                    label="iMessage"
+                    hint="reads chat.db (Mac)"
+                  />
+                </div>
+              </div>
+
               <Field label="Name">
                 <input
                   value={name}
@@ -110,53 +159,51 @@ export default function AddPlantSheet({
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
+              {source === "whatsapp" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field
+                      label="Phone (with country code)"
+                      hint="digits only"
+                    >
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="919876543210"
+                        inputMode="numeric"
+                        className="input-pixel"
+                      />
+                    </Field>
+                    <Field label="Handle (optional)">
+                      <input
+                        value={handle}
+                        onChange={(e) => setHandle(e.target.value)}
+                        placeholder="@anjali"
+                        className="input-pixel"
+                      />
+                    </Field>
+                  </div>
+
+                  <Field
+                    label="WhatsApp chat export (.txt)"
+                    hint="In WhatsApp: chat → menu → Export chat → without media"
+                  >
+                    <FileDrop file={file} onChange={setFile} />
+                  </Field>
+                </>
+              ) : (
                 <Field
-                  label="Phone (with country code)"
-                  hint="digits only"
+                  label="iMessage handle"
+                  hint="Phone with country code (+919876543210) or email used for iMessage"
                 >
                   <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="919876543210"
-                    inputMode="numeric"
+                    value={imessageHandle}
+                    onChange={(e) => setImessageHandle(e.target.value)}
+                    placeholder="+919876543210"
                     className="input-pixel"
                   />
                 </Field>
-                <Field label="Handle (optional)">
-                  <input
-                    value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    placeholder="@anjali"
-                    className="input-pixel"
-                  />
-                </Field>
-              </div>
-
-              <Field label="Send via">
-                <div className="flex gap-2">
-                  {(
-                    [
-                      ["whatsapp", "WhatsApp"],
-                      ["imessage", "iMessage"],
-                      ["call", "Call"],
-                    ] as const
-                  ).map(([k, label]) => (
-                    <button
-                      key={k}
-                      onClick={() => setChannel(k)}
-                      className={clsx(
-                        "flex-1 px-3 py-2 rounded-2xl text-sm font-semibold border-2 transition-all",
-                        channel === k
-                          ? "bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-300 text-emerald-800"
-                          : "bg-white/60 border-transparent text-[var(--color-ink-muted)] hover:bg-white/80",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </Field>
+              )}
 
               <Field
                 label="What are they up to (optional)"
@@ -169,13 +216,6 @@ export default function AddPlantSheet({
                   placeholder="Just got a PM role at Atlassian. Posts a lot about books."
                   className="input-pixel"
                 />
-              </Field>
-
-              <Field
-                label="WhatsApp chat export (.txt)"
-                hint="In WhatsApp: chat → menu → Export chat → without media"
-              >
-                <FileDrop file={file} onChange={setFile} />
               </Field>
 
               {error && (
@@ -263,6 +303,49 @@ function Field({
         </p>
       )}
     </div>
+  );
+}
+
+function SourceButton({
+  active,
+  onClick,
+  icon,
+  label,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={clsx(
+        "flex flex-col items-start gap-1 px-3 py-2.5 rounded-2xl text-left border-2 transition-all",
+        active
+          ? "bg-gradient-to-br from-emerald-50 to-green-100 border-emerald-300"
+          : "bg-white/60 border-transparent hover:bg-white/80",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <span className={active ? "text-emerald-700" : "text-[var(--color-ink-muted)]"}>
+          {icon}
+        </span>
+        <span
+          className={clsx(
+            "text-sm font-semibold",
+            active ? "text-emerald-800" : "text-[var(--color-ink)]",
+          )}
+        >
+          {label}
+        </span>
+      </div>
+      <span className="text-[11px] text-[var(--color-ink-muted)]">
+        {hint}
+      </span>
+    </button>
   );
 }
 

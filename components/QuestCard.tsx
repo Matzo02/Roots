@@ -2,6 +2,7 @@
 
 import type { Plant } from "@/lib/types";
 import { ArrowRight, Sparkles } from "lucide-react";
+import A2UIRenderer from "./A2UIRenderer";
 import PlantArt from "./PlantArt";
 
 export default function QuestCard({
@@ -11,13 +12,20 @@ export default function QuestCard({
   plant: Plant;
   onTend: () => void;
 }) {
+  // Compose a fallback surface if the agent hasn't provided one
+  const surface = plant.surface ?? {
+    type: "stack" as const,
+    spacing: "normal" as const,
+    children: [
+      { type: "text" as const, body: plant.context, emphasis: "default" as const },
+    ],
+  };
+
   return (
     <div className="relative anim-pop">
-      {/* Soft glow halo */}
       <div className="absolute -inset-4 bg-gradient-to-br from-amber-200/40 via-orange-200/30 to-rose-200/30 blur-2xl rounded-[3rem] pointer-events-none" />
 
       <div className="relative surface-glow rounded-[2rem] p-6 md:p-7 overflow-hidden">
-        {/* Decorative background sparkles */}
         <div className="absolute -top-6 -right-6 w-32 h-32 bg-gradient-to-br from-amber-200/40 to-transparent rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-gradient-to-tr from-rose-200/30 to-transparent rounded-full blur-2xl pointer-events-none" />
 
@@ -31,11 +39,10 @@ export default function QuestCard({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 md:gap-6">
-          {/* Plant + text row */}
-          <div className="flex items-center gap-4 sm:gap-5 flex-1 min-w-0">
-            {/* Plant illustration */}
-            <div className="relative flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+          {/* Plant illustration + name */}
+          <div className="flex sm:flex-col items-center gap-3 sm:gap-2 flex-shrink-0">
+            <div className="relative">
               <div
                 className="absolute inset-0 rounded-full blur-xl"
                 style={{
@@ -47,26 +54,25 @@ export default function QuestCard({
                 <PlantArt state={plant.state} size={104} />
               </div>
             </div>
-
-            {/* Text */}
-            <div className="flex-1 min-w-0">
-              <h2 className="font-display text-2xl md:text-3xl font-semibold text-[var(--color-ink)] mb-1 tracking-tight">
-                {plant.name}
-              </h2>
-              <p className="text-[15px] md:text-base leading-snug text-[var(--color-ink-soft)]">
-                {plant.context}
-              </p>
-            </div>
+            <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)] tracking-tight sm:text-center">
+              {plant.name}
+            </h2>
           </div>
 
-          {/* CTA */}
-          <button
-            onClick={onTend}
-            className="btn btn-primary self-stretch sm:self-center text-sm px-5 py-3 sm:flex-shrink-0"
-          >
-            <span>Tend</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {/* Agent's A2UI surface */}
+          <div className="flex-1 min-w-0">
+            <A2UIRenderer surface={surface} />
+
+            <div className="mt-4">
+              <button
+                onClick={onTend}
+                className="btn btn-primary text-sm px-5 py-3"
+              >
+                <span>Tend</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

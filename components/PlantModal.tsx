@@ -9,16 +9,22 @@ import {
 import type { Action, Plant } from "@/lib/types";
 import clsx from "clsx";
 import {
+  Eye,
+  EyeOff,
   Heart,
+  Loader2,
   MessageCircle,
   Mic,
   Phone,
+  RefreshCw,
   Reply as ReplyIcon,
   Scissors,
   Sprout,
+  Trash2,
   X,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import A2UIRenderer from "./A2UIRenderer";
 import PlantArt from "./PlantArt";
 
 type ActionMeta = {
@@ -67,13 +73,31 @@ const ACTIONS: ActionMeta[] = [
 
 export default function PlantModal({
   plant,
+  lastSyncedAt,
   onClose,
   onAction,
+  onPlantUpdated,
+  onPlantRemoved,
 }: {
   plant: Plant | null;
+  lastSyncedAt?: number | null;
   onClose: () => void;
   onAction: (plant: Plant, action: Action) => void;
+  onPlantUpdated?: (plant: Plant) => void;
+  onPlantRemoved?: (plantId: string) => void;
 }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [showMessages, setShowMessages] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("roots:showMessages") === "1";
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("roots:showMessages", showMessages ? "1" : "0");
+  }, [showMessages]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -86,6 +110,52 @@ export default function PlantModal({
 
   const isReady = plant.state === "ready";
   const points = plant.talkingPoints ?? [];
+  const recent = plant.recentMessages ?? [];
+
+  const refreshObservation = async () => {
+    setRefreshing(true);
+    setRefreshError(null);
+    try {
+      const r = await fetch("/api/observe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plantId: plant.id }),
+      });
+      const data = await r.json();
+      if (r.ok && data.plant && onPlantUpdated) {
+        onPlantUpdated({ ...data.plant, recentMessages: plant.recentMessages });
+      } else if (!r.ok) {
+        const msg: string = data.error ?? "agent unavailable";
+        if (/quota|rate|429|RESOURCE_EXHAUSTED/i.test(msg)) {
+          setRefreshError("Gemini quota — try later or enable billing");
+        } else {
+          setRefreshError("agent unavailable");
+        }
+        setTimeout(() => setRefreshError(null), 3500);
+      }
+    } catch {
+      setRefreshError("agent unavailable");
+      setTimeout(() => setRefreshError(null), 3500);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const removeFromGarden = async () => {
+    if (!onPlantRemoved) return;
+    if (!window.confirm(`Remove ${plant.name} from your garden? This deletes the plant and its cached chat — re-import to bring them back.`)) {
+      return;
+    }
+    try {
+      const r = await fetch(`/api/plants/${plant.id}`, { method: "DELETE" });
+      if (r.ok) {
+        onPlantRemoved(plant.id);
+        onClose();
+      }
+    } catch {
+      /* swallow */
+    }
+  };
 
   const handleAction = (action: Action) => {
     if (action === "reply" && !isReady) return;
@@ -176,13 +246,10 @@ export default function PlantModal({
                   <StateBadge state={plant.state} />
                 </div>
                 {plant.handle && (
-                  <p className="text-sm text-[var(--color-ink-muted)] mb-2.5">
+                  <p className="text-sm text-[var(--color-ink-muted)]">
                     {plant.handle}
                   </p>
                 )}
-                <p className="text-[15px] leading-relaxed text-[var(--color-ink-soft)]">
-                  {plant.context}
-                </p>
               </div>
             </div>
 
@@ -202,30 +269,138 @@ export default function PlantModal({
               <WarmthBar warmth={plant.warmth} />
             </div>
 
-            {/* Talking points — agent's role: notice, not write */}
-            {points.length > 0 && (
-              <div className="mb-5 rounded-2xl border border-emerald-200/50 bg-gradient-to-br from-emerald-50/60 to-lime-50/60 p-4">
-                <div className="flex items-center justify-between mb-2">
+            {/* Agent observation — A2UI surface */}
+            <div className="mb-5 rounded-2xl border border-emerald-200/50 bg-gradient-to-br from-emerald-50/40 to-lime-50/40 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
-                    Things to react to
+                    Agent observation
                   </span>
-                  <span className="text-[10px] text-emerald-700/70 italic">
-                    you bring the words
+                  {onPlantUpdated && (
+                    <button
+                      onClick={refreshObservation}
+                      disabled={refreshing}
+                      title="Re-run agent on latest messages"
+                      className="text-[10px] text-emerald-700 hover:text-emerald-900 disabled:opacity-50 inline-flex items-center gap-1"
+                    >
+                      {refreshing ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                      <span>
+                        {refreshing
+                          ? "thinking…"
+                          : refreshError ?? "refresh"}
+                      </span>
+                    </button>
+                  )}
+                </div>
+                <span className="text-[10px] text-emerald-700/70 italic">
+                  you bring the words
+                </span>
+              </div>
+              <A2UIRenderer
+                surface={
+                  plant.surface ?? {
+                    type: "stack",
+                    spacing: "normal",
+                    children: [
+                      ...(plant.context
+                        ? ([{ type: "text", body: plant.context } as const])
+                        : []),
+                      ...(points.length > 0
+                        ? ([
+                            {
+                              type: "heading",
+                              body: "Things to react to",
+                              level: 3,
+                            } as const,
+                            { type: "bullet_list", items: points } as const,
+                          ])
+                        : []),
+                    ],
+                  }
+                }
+              />
+            </div>
+
+            {/* Recent messages — what's actually been said */}
+            {recent.length > 0 && (
+              <div className="mb-5 rounded-2xl border border-black/8 bg-white/60 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
+                      Recent messages
+                    </span>
+                    <button
+                      onClick={() => setShowMessages((v) => !v)}
+                      title={showMessages ? "Hide content" : "Show content"}
+                      className="inline-flex items-center gap-1 text-[10px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
+                    >
+                      {showMessages ? (
+                        <>
+                          <EyeOff className="w-3 h-3" />
+                          <span>hide</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3 h-3" />
+                          <span>show</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-[var(--color-ink-muted)]/80 tabular-nums inline-flex items-center gap-1.5">
+                    {lastSyncedAt && (
+                      <span
+                        key={lastSyncedAt}
+                        className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 anim-pulse-once"
+                        title={`synced ${new Date(lastSyncedAt).toLocaleTimeString()}`}
+                      />
+                    )}
+                    last {recent.length}{!showMessages && " · hidden"}
                   </span>
                 </div>
-                <ul className="space-y-1.5">
-                  {points.map((pt, i) => (
+                <ul className="space-y-2">
+                  {recent.map((m, i) => (
                     <li
                       key={i}
-                      className="flex gap-2 text-[14px] leading-snug text-[var(--color-ink-soft)]"
+                      className={clsx(
+                        "flex gap-2.5",
+                        m.fromMe ? "flex-row-reverse" : "",
+                      )}
                     >
-                      <span className="text-emerald-500 flex-shrink-0 mt-0.5">
-                        ●
+                      <span
+                        className={clsx(
+                          "px-3 py-1.5 rounded-2xl text-[13px] leading-snug max-w-[80%] transition-all duration-200",
+                          m.fromMe
+                            ? "bg-emerald-500/90 text-white rounded-br-sm"
+                            : "bg-white border border-black/8 text-[var(--color-ink)] rounded-bl-sm",
+                          !showMessages && "select-none",
+                        )}
+                        style={
+                          !showMessages
+                            ? {
+                                filter: "blur(6px)",
+                                WebkitFilter: "blur(6px)",
+                              }
+                            : undefined
+                        }
+                      >
+                        {m.text}
                       </span>
-                      <span>{pt}</span>
+                      <span className="text-[10px] text-[var(--color-ink-muted)] flex-shrink-0 self-end mb-1 tabular-nums">
+                        {formatRelativeTime(m.at)}
+                      </span>
                     </li>
                   ))}
                 </ul>
+                {!showMessages && (
+                  <p className="mt-3 text-[11px] text-[var(--color-ink-muted)] italic text-center">
+                    Content blurred for privacy. The agent already read these — you don&apos;t have to.
+                  </p>
+                )}
               </div>
             )}
 
@@ -278,6 +453,18 @@ export default function PlantModal({
             <p className="mt-4 text-center text-[11px] text-[var(--color-ink-muted)] italic">
               Roots opens the chat empty. Whatever you say, you say.
             </p>
+
+            {onPlantRemoved && (
+              <div className="mt-3 flex items-center justify-center">
+                <button
+                  onClick={removeFromGarden}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] hover:text-rose-600 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>remove from garden</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -306,6 +493,20 @@ function StateBadge({ state }: { state: Plant["state"] }) {
       {plantStateLabel(state).toLowerCase()}
     </span>
   );
+}
+
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function WarmthBar({ warmth }: { warmth: number }) {

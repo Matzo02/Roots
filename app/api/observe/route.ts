@@ -10,7 +10,8 @@
  */
 
 import { observePlant } from "@/lib/agent";
-import { getChatForPlant, updatePlants } from "@/lib/storage";
+import { getChatForPlant, setChatForPlant, updatePlants } from "@/lib/storage";
+import { readLinkedChat } from "@/lib/wa-session";
 import { computeSignals } from "@/lib/whatsapp-parser";
 import { z } from "zod";
 
@@ -34,24 +35,35 @@ export async function POST(req: Request) {
     );
   }
 
-  const chat = await getChatForPlant(body.plantId);
-  if (!chat) {
-    return Response.json(
-      { error: "No chat history found for this plant" },
-      { status: 404 },
-    );
-  }
-
   const updatedPlants = await updatePlants((all) => all);
   const plant = updatedPlants.find((p) => p.id === body.plantId);
   if (!plant) {
     return Response.json({ error: "Plant not found" }, { status: 404 });
   }
 
+  // Prefer live Baileys cache — picks up new messages since import.
+  // Derive JID from phone for plants imported before the field existed.
+  const jid =
+    plant.jid ?? (plant.phone ? `${plant.phone}@s.whatsapp.net` : undefined);
+  let chat = jid ? readLinkedChat(jid, plant.name) : null;
+  if (!chat || chat.messageCount === 0) {
+    chat = (await getChatForPlant(body.plantId)) ?? null;
+  }
+  if (!chat) {
+    return Response.json(
+      { error: "No chat history available — try re-importing." },
+      { status: 404 },
+    );
+  }
+
+  // Persist the freshest snapshot — keeps the plant warm across server restarts
+  await setChatForPlant(body.plantId, chat);
+
   const signals = computeSignals(chat);
 
   let context = plant.context;
   let talkingPoints = plant.talkingPoints ?? [];
+  let surface = plant.surface;
   try {
     const obs = await observePlant({
       contactName: plant.name,
@@ -60,6 +72,7 @@ export async function POST(req: Request) {
     });
     context = obs.context;
     talkingPoints = obs.talkingPoints;
+    surface = obs.surface;
   } catch (err) {
     console.error("[observe] agent failed:", err);
     return Response.json(
@@ -70,7 +83,7 @@ export async function POST(req: Request) {
 
   const plants = await updatePlants((all) =>
     all.map((p) =>
-      p.id === body.plantId ? { ...p, context, talkingPoints } : p,
+      p.id === body.plantId ? { ...p, context, talkingPoints, surface } : p,
     ),
   );
 
