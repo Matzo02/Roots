@@ -1,0 +1,294 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Plant greens — alive, saturated */
+  --color-leaf-50: #f0fdf4;
+  --color-leaf-100: #dcfce7;
+  --color-leaf-200: #bbf7d0;
+  --color-leaf-300: #86efac;
+  --color-leaf-400: #4ade80;
+  --color-leaf-500: #22c55e;
+  --color-leaf-600: #16a34a;
+  --color-leaf-700: #15803d;
+  --color-leaf-800: #166534;
+  --color-leaf-900: #14532d;
+
+  /* Warm sunset tones for "ready" */
+  --color-sun-100: #fef3c7;
+  --color-sun-200: #fde68a;
+  --color-sun-300: #fcd34d;
+  --color-sun-400: #fbbf24;
+  --color-sun-500: #f59e0b;
+  --color-sun-600: #d97706;
+  --color-sun-700: #b45309;
+
+  /* Warm rose for hearts/love */
+  --color-rose-300: #fda4af;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+
+  /* Soil — warm, painterly browns */
+  --color-soil-100: #f7e6d2;
+  --color-soil-200: #e8c8a0;
+  --color-soil-300: #d4a574;
+  --color-soil-400: #b07b4a;
+  --color-soil-500: #8b5a3c;
+  --color-soil-600: #6b4226;
+  --color-soil-700: #4a2818;
+
+  /* Sage / cream — UI surfaces */
+  --color-sage-50: #fafaf6;
+  --color-sage-100: #f4f4ec;
+  --color-sage-200: #e7eddc;
+  --color-sage-300: #d4dec1;
+  --color-sage-400: #b8c79c;
+
+  /* Slate — text */
+  --color-ink: #1c2826;
+  --color-ink-soft: #3f5048;
+  --color-ink-muted: #687a72;
+
+  /* Cream backgrounds */
+  --color-cream: #fdf8e8;
+  --color-paper: #fffcf3;
+
+  /* Sky — ambient backdrop */
+  --color-sky-warm-1: #fef3e2;
+  --color-sky-warm-2: #fde7c7;
+  --color-sky-warm-3: #fad9b3;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+
+  --radius-card: 24px;
+  --radius-pill: 999px;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: linear-gradient(180deg, #fef3e2 0%, #f4f4ec 40%, #e7eddc 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: var(--color-leaf-200);
+    color: var(--color-ink);
+  }
+}
+
+@layer utilities {
+  /* Display type */
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "ss01", "ss02";
+    letter-spacing: -0.01em;
+  }
+
+  /* Card surfaces */
+  .surface {
+    background: var(--color-paper);
+    border: 1px solid rgba(28, 40, 38, 0.06);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 1px 2px rgba(28, 40, 38, 0.04),
+      0 8px 24px -8px rgba(28, 40, 38, 0.08);
+  }
+  .surface-raised {
+    background: var(--color-paper);
+    border: 1px solid rgba(28, 40, 38, 0.06);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 2px 4px rgba(28, 40, 38, 0.06),
+      0 12px 32px -10px rgba(28, 40, 38, 0.16),
+      0 24px 48px -16px rgba(28, 40, 38, 0.12);
+  }
+  .surface-glow {
+    background: linear-gradient(135deg, #fffbf0 0%, #fef3c7 100%);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 0 0 4px rgba(251, 191, 36, 0.12),
+      0 8px 24px -6px rgba(251, 191, 36, 0.32),
+      0 16px 48px -12px rgba(217, 119, 6, 0.2);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    border-radius: 999px;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      background 200ms;
+    cursor: pointer;
+    border: none;
+    user-select: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+    color: #422a06;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 2px 4px rgba(180, 83, 9, 0.2),
+      0 8px 24px -6px rgba(217, 119, 6, 0.4);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 4px 8px rgba(180, 83, 9, 0.24),
+      0 12px 32px -6px rgba(217, 119, 6, 0.48);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--color-ink);
+    border: 1px solid rgba(28, 40, 38, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 1px 2px rgba(28, 40, 38, 0.04);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 1);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-ink-soft);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(28, 40, 38, 0.04);
+    color: var(--color-ink);
+  }
+
+  /* Pills (HUD chips) */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(28, 40, 38, 0.06);
+    border-radius: 999px;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 1px 2px rgba(28, 40, 38, 0.04);
+  }
+
+  /* Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  .anim-float { animation: float 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+  @keyframes float-soft {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-3px) rotate(0.5deg); }
+  }
+  .anim-float-soft { animation: float-soft 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+  @keyframes droop {
+    0%, 100% { transform: translateY(1px) rotate(-1.5deg); }
+    50%      { transform: translateY(0) rotate(1.5deg); }
+  }
+  .anim-droop { animation: droop 5s ease-in-out infinite; }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      filter: drop-shadow(0 4px 16px rgba(251, 191, 36, 0.3))
+              drop-shadow(0 0 8px rgba(251, 191, 36, 0.2));
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 8px 28px rgba(251, 191, 36, 0.55))
+              drop-shadow(0 0 16px rgba(251, 191, 36, 0.4));
+      transform: translateY(-3px) scale(1.04);
+    }
+  }
+  .anim-glow { animation: glow-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+    35%      { opacity: 1; transform: scale(1) rotate(45deg); }
+    65%      { opacity: 1; transform: scale(0.95) rotate(120deg); }
+  }
+  .anim-sparkle { animation: sparkle 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .anim-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      #fbbf24 0%,
+      #fcd34d 25%,
+      #fef3c7 50%,
+      #fcd34d 75%,
+      #fbbf24 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 4s linear infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 1; transform: scale(1) rotate(-2deg); }
+    50%      { opacity: 0.92; transform: scale(0.94) rotate(2deg); }
+  }
+  .anim-flicker { animation: flicker 0.7s ease-in-out infinite; }
+
+  @keyframes pop-in {
+    0%   { opacity: 0; transform: scale(0.92) translateY(8px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .anim-pop { animation: pop-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  @keyframes blink-eye {
+    0%, 92%, 100% { transform: scaleY(1); }
+    96%           { transform: scaleY(0.1); }
+  }
+  .anim-blink { animation: blink-eye 4s ease-in-out infinite; transform-origin: center; }
+
+  @keyframes blink-eye-2 {
+    0%, 88%, 100% { transform: scaleY(1); }
+    93%           { transform: scaleY(0.1); }
+  }
+  .anim-blink-slow { animation: blink-eye-2 5.5s ease-in-out infinite; transform-origin: center; }
+
+  @keyframes drift {
+    0%   { transform: translate(0, 0); }
+    50%  { transform: translate(8px, -4px); }
+    100% { transform: translate(0, 0); }
+  }
+  .anim-drift { animation: drift 8s ease-in-out infinite; }
+}
